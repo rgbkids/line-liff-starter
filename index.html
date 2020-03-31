@@ -1,10 +1,131 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LIFF Starter</title>
+    <meta charset="utf-8">
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
+
+
+<p id="my-info"></p>
+<button id="my-login">ログイン(Google)</button>
+<button id="my-logout">ログアウト</button>
+<button id="my-buy" style="display: none;">チケットを買う</button>
+<button id="my-cancel">チケットキャンセル</button>
+<a id="buy-link" style="float: right;" href="">👉チケット購入画面</a><br>
+<br>
+<script src="https://www.gstatic.com/firebasejs/5.0.4/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/5.0.4/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/5.0.4/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/5.0.4/firebase-functions.js"></script>
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDS12gHH6QsdYV8ckt0SRA4tuu2feKU0Fc",
+        projectId: "vteacher-online",
+        authDomain: "vteacher-online.firebaseapp.com",
+        databaseURL: "https://vteacher-online.firebaseio.com",
+    };
+
+    firebase.initializeApp(firebaseConfig);
+
+    const db = firebase.firestore();
+    db.settings({
+        timestampsInSnapshots: true
+    });
+    const collection = db.collection('tickets');
+
+    const auth = firebase.auth();
+    let me = null;
+    let bought = false;
+
+    const info = document.getElementById('my-info');
+    const login = document.getElementById('my-login');
+    const logout = document.getElementById('my-logout');
+    const buy = document.getElementById('my-buy');
+    const cancel = document.getElementById('my-cancel');
+
+    login.addEventListener('click', () => {
+        let provider = new firebase.auth.GoogleAuthProvider();
+        firebase.auth().signInWithRedirect(provider);
+    });
+
+    logout.addEventListener('click', () => {
+        auth.signOut();
+        localStorage.setItem('passcode', '');
+        info.innerHTML = "ログインしてください！";
+    });
+
+    buy.addEventListener('click', () => {
+        if (bought) {
+            alert('購入済です！');
+            return;
+        }
+
+        collection.add({
+            ticket: 'bought',
+            created: firebase.firestore.FieldValue.serverTimestamp(),
+            uid: me ? me.uid : ''
+        })
+        .then(doc => {
+            alert('チケットを購入しました！');
+            bought = true;
+        })
+        .catch(error => {
+            info.innerHTML = "ログインしてください！";
+        });
+    });
+
+    cancel.addEventListener('click', () => {
+        if (!bought) {
+            alert('未購入です！');
+            return;
+        }
+
+        collection.where('uid', '==', me.uid).get().then(doc => {
+            collection.doc(doc.docs[0].id).delete()
+            .then(doc => {
+                alert('チケットをキャンセルしました！');
+                info.innerHTML = "ログインしています。";
+                localStorage.setItem('passcode', '');
+                bought = false;
+            })
+            .catch(error => {
+                info.innerHTML = "ログインしてください！";
+            });
+        });
+    });
+
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            me = user;
+            info.innerHTML = "ログインしています。";
+
+            document.getElementById("buy-link").href
+                = "https://vteacher.online/v/lessons/libs/stripe/stripe-ui/"
+                    + "?user_id=" + me.uid
+                    + "&email=" + me.email
+                    + "&payment_id=" + me.email
+                    + "&amount=" + 100;
+
+            collection.orderBy('created').onSnapshot(snapshot => {
+                snapshot.docChanges().forEach(change => {
+                    if (change.type === 'added') {
+                        const d = change.doc.data();
+                        if (me.uid == d.uid && d.ticket == "bought") {
+                            info.innerHTML = "ログインしています。チケット購入済";
+                            bought = true;
+                        }
+                    }
+                });
+            }, error => {
+            });
+            return;
+        }
+        me = null;
+    });
+</script>
+
     <div class="buttongroup">
         <div class="buttonrow">
             <button id="openwindowbutton">Open Window</button>
@@ -78,7 +199,7 @@
             </tr>
         </table>
     </div>
-    
+
     <script src="https://d.line-scdn.net/liff/1.0/sdk.js"></script>
     <script src="liff-starter.js"></script>
 </body>

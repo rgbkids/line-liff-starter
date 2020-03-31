@@ -28,11 +28,11 @@ function initializeApp(data) {
     document.getElementById('sendmessagebutton').addEventListener('click', function () {
         liff.sendMessages([{
             type: 'text',
-            text: "You've successfully sent a message! Hooray!"
+            text: "メッセージおくります"
         }, {
             type: 'sticker',
-            packageId: '2',
-            stickerId: '144'
+            packageId: '1',
+            stickerId: '1'
         }]).then(function () {
             window.alert("Message sent");
         }).catch(function (error) {
